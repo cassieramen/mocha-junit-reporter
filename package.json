@@ -26,6 +26,7 @@
     "mocha": "^2.1.0"
   },
   "dependencies": {
-    "xml": "^1.0.0"
+    "xml": "^1.0.0",
+    "underscore": "latest"
   }
 }

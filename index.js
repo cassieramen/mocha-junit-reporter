@@ -4,6 +4,7 @@ var xml = require('xml');
 var Base = require('mocha').reporters.Base;
 var filePath = process.env.MOCHA_FILE || 'test-results.xml';
 var fs = require('fs');
+var _ = require('underscore');
 
 module.exports = MochaJUnitReporter;
 
@@ -14,9 +15,8 @@ module.exports = MochaJUnitReporter;
  * @param {EventEmitter} runner - the test runner
  */
 function MochaJUnitReporter(runner) {
-  // a list of all test cases that have run
-  var testcases = [];
-  var testsuites = [];
+  // an obj with keys as suites and tests and there values
+  var tests = {};
 
   // get functionality from the Base reporter
   Base.call(this, runner);
@@ -27,37 +27,28 @@ function MochaJUnitReporter(runner) {
       fs.unlinkSync(filePath);
     }
   });
-  
-  runner.on('suite', function(suite){
-    testsuites.push(this.getTestsuiteData(suite));
-  }.bind(this));
 
   runner.on('pass', function(test){
-    testcases.push(this.getTestcaseData(test));
+    if(tests[test.parent.title]) {
+      tests[test.parent.title].push(this.getTestcaseData(test));
+    } else {
+      tests[test.parent.title] = [this.getTestcaseData(test)];
+    }
   }.bind(this));
 
   runner.on('fail', function(test, err){
-    testcases.push(this.getTestcaseData(test, err));
+    if(tests[test.parent.title]) {
+      tests[test.parent.title].push(this.getTestcaseData(test, err));
+    } else {
+      tests[test.parent.title] = [this.getTestcaseData(test, err)];
+    }
   }.bind(this));
 
   runner.on('end', function(){
-    this.writeXmlToDisk(this.getXml(testsuites, testcases, this.stats));
+    this.writeXmlToDisk(this.getXml(tests));
   }.bind(this));
 
 }
-
-MochaJUnitReporter.prototype.getTestsuiteData = function(suite){
-  return {
-    testsuite: [
-      {
-        _attr: {
-          name: suite.title,
-          tests: suite.tests.length
-        }
-      }
-    ]
-  };
-};
 
 /**
  * Produces an xml config for a given test case.
@@ -66,39 +57,46 @@ MochaJUnitReporter.prototype.getTestsuiteData = function(suite){
  * @returns {object}
  */
 MochaJUnitReporter.prototype.getTestcaseData = function(test, err){
-  var config = {
-    testcase: [{
-      _attr: {
-        name: test.fullTitle(),
-        time: test.duration,
-        className: test.title
-      }
-    }]
+  var testCase = {
+    name: test.fullTitle(),
+    className: test.title,
+    time: test.duration
   };
   if ( err ) {
-    config.testcase.push({failure: err.message});
+    testCase.error = err.message;
   }
-  return config;
+  return testCase;
 };
 
 /**
  * Produces an XML string from the given test data.
- * @param {array} testcases - a list of xml configs
- * @param {number} passes - number of tests passed
- * @param {number} failures - number tests failed
- * @returns {string}
+ * @param {Object} tests - the test object. The suite name is the key with value
+ *          an array of tests for that suite
  */
-MochaJUnitReporter.prototype.getXml = function(testsuites, testcases, stats){
-  var suites = testsuites.map(function(suite, i){
-    var _suite = Object.create(suite);
-    var _cases = testcases.slice(i, suite.tests);
-    _suite.testsuite = _suite.testsuite.concat(_cases);
-    _suite.testsuite[0]._attr.failures = _cases.reduce(function(num, testcase){ 
-      return num + (testcase.testcase.length > 1)? 1 : 0;
-    }, 0);
-    _suite.testsuite[0]._attr.timestamp = stats.start;
-    _suite.testsuite[0]._attr.time = stats.duration;
-    return _suite;
+MochaJUnitReporter.prototype.getXml = function(tests){
+  var suites = [];
+  _.each(tests, function(cases, key, list) {
+    //the xml package expects super funky formatting
+    var suite = [
+      {
+        _attr: {
+          name: key,
+          tests: cases.length,
+          failures: 0,
+          timestamp: Date()
+        }
+      }
+    ];
+    _.each(cases, function(elem) {
+      var formattedCase = {
+        _attr: elem
+      };
+      if(elem.error) {
+        suite[0]['_attr'].failures = suite[0]['_attr'].failures + 1;
+      }
+      suite.push({testcase: formattedCase});
+    });
+    suites.push({testsuite: suite});
   });
   return xml({ testsuites: suites }, { declaration: true });
 };

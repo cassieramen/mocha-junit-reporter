@@ -30,6 +30,9 @@ describe('mocha-junit-reporter', function(){
       fullTitle: function(){ return 'Foo can weez the juice'; },
       title: 'can weez the juice',
       duration: 1,
+      parent: {
+        title: "Foo Bar module"
+      },
       slow: function(){}
     });
     runner.emit('test end');
@@ -37,6 +40,9 @@ describe('mocha-junit-reporter', function(){
       fullTitle: function(){ return 'Bar can narfle the garthog'; },
       title: 'can narfle the garthog',
       duration: 1,
+      parent: {
+        title: "Foo Bar module"
+      },
       slow: function(){}
     }, {
       message: 'expected garthog to be dead'

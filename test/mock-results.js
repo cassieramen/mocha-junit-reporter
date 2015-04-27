@@ -10,8 +10,7 @@ module.exports = function(stats){
               name: "Foo Bar module",
               timestamp: stats.start,
               tests: "2",
-              failures: "1",
-              time: stats.duration
+              failures: "1"
             }
           },
           {
@@ -29,11 +28,9 @@ module.exports = function(stats){
                 _attr: {
                   name: "Bar can narfle the garthog",
                   className: "can narfle the garthog",
-                  time: "1"
+                  time: "1",
+                  error: "expected garthog to be dead"
                 }
-              },
-              {
-                failure: "expected garthog to be dead"
               }
             ]
           }
